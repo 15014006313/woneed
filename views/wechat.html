@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeChat</title>
+    <script src="../static/js/flexible.js"></script>
+</head>
+<style>
+    body {
+        background-color: #f5f5f5;
+    }
+
+    ul,
+    li {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .mess {
+        text-align: center;
+    }
+
+    .wechat_box {
+        width: 90%;
+        height: 9rem;
+        overflow-y: auto;
+        margin: .2rem auto;
+        border-radius: 6px;
+        border: 1px solid #abcdef;
+    }
+
+    .handle_box {
+        position: fixed;
+        bottom: .5rem;
+        left: 50%;
+        display: flex;
+        width: 90%;
+        transform: translateX(-50%);
+    }
+
+    #val {
+        flex: 1;
+        margin-right: .2rem;
+    }
+
+    #btn {
+        display: inline-block;
+        width: 1.4rem;
+        height: .7rem;
+        line-height: .7rem;
+        text-align: center;
+        border-radius: .04rem;
+        color: #fff;
+        background-color: #abcdef;
+        border: .02rem solid #66a3e0;
+    }
+
+    .msg_list li {
+        text-align: right;
+        padding: 0 .2rem;
+        margin: .2rem 0;
+        display: flex;
+    }
+
+    .msg_list .msg_box {
+        flex: 1;
+    }
+
+    .msg_list .msg {
+        position: relative;
+        display: inline-block;
+        padding: .08rem .1rem;
+        border-radius: .04rem;
+        margin: 0 .2rem;
+        font-size: .28rem;
+        text-align: left;
+        word-break: break-all;
+        line-height: 0.46rem;
+        vertical-align: middle;
+        background-color: #95ec69;
+    }
+
+    .msg_list li:not(.tc):not(.tl) .msg::after {
+        content: "";
+        width: 0;
+        height: 0;
+        position: absolute;
+        right: 0;
+        top: .22rem;
+        transform: translateX(100%);
+        border: .1rem solid #95ec69;
+        border-top-color: transparent;
+        border-right-color: transparent;
+        border-bottom-color: transparent;
+    }
+
+    .msg_list li.tl {
+        position: relative;
+    }
+
+    .msg_list li.tl .msg {
+        background-color: #fff;
+        margin-top: .3rem;
+    }
+
+    .msg_list li.tl .name {
+        position: absolute;
+        top: 0;
+        left: 1rem;
+        font-size: .2rem;
+    }
+
+    .msg_list li.tl .msg::after {
+        content: "";
+        width: 0;
+        height: 0;
+        position: absolute;
+        left: 0;
+        top: .22rem;
+        transform: translateX(-100%);
+        border: .1rem solid #fff;
+        border-top-color: transparent;
+        border-left-color: transparent;
+        border-bottom-color: transparent;
+    }
+
+    .msg_list .info {
+        width: 100%;
+    }
+
+    .msg_list .tl {
+        text-align: left;
+    }
+
+    .msg_list .tc {
+        text-align: center;
+        padding: .04rem;
+        margin: 0;
+        font-size: .24rem;
+    }
+
+    .msg_list li:not(.tc):not(.tl):after {
+        content: "";
+        display: inline-block;
+        width: .6rem;
+        height: .6rem;
+        border-radius: .1rem;
+        vertical-align: middle;
+        background-color: #abcdef;
+    }
+
+    .msg_list li.tl::before {
+        content: "";
+        display: inline-block;
+        width: .6rem;
+        height: .6rem;
+        border-radius: .1rem;
+        vertical-align: middle;
+        background-color: #abcdef;
+    }
+</style>
+
+<body>
+    <h1>{{ title }}</h1>
+    <div class="mess"><span id="room_name">正在连接...</span><span id="room_num"></span></div>
+    <div class="wechat_box">
+        <ul class="msg_list" id="msg_list">
+        </ul>
+    </div>
+    <div class="handle_box">
+        <input type="text" id="val">
+        <div id="btn">发送</div>
+    </div>
+    <script>
+        // const address = 'ws://42.194.194.50:3366';
+        const address = 'ws://localhost:3366';
+        var room = { name: document.getElementById("room_name"), num: document.getElementById("room_num") }, wechat = { nickname: getValue('user'), room: getValue('room') };
+        if (wechat.nickname != null && wechat.nickname != "" && window.WebSocket) {
+            var ws = new WebSocket(address);
+
+            ws.onopen = function (e) {
+                console.log("连接服务器成功");
+                ws.send(JSON.stringify({ type: 'setName', ...wechat }));
+            }
+            ws.onclose = function (e) {
+                console.log("服务器关闭");
+            }
+            ws.onerror = function () {
+                console.log("连接出错");
+            }
+
+            ws.onmessage = function (e) {
+                console.log(e.data, new Date());
+                const data = JSON.parse(e.data);
+                room.name.innerHTML = decodeURIComponent(data.room);
+                if (data.type == 'chatterList')
+                    room.num.innerHTML = `(${data.list.length})`;
+                if (data.message != undefined)
+                    addMsg(data);
+            }
+            ws.onclose = this.onWebsocketClose;
+            ws.onerror = this.onWebsocketError;
+            document.querySelector("#btn").onclick = sendMsg;
+            document.addEventListener('keyup', function (event) {
+                if (event.keyCode == 13) {
+                    sendMsg();
+                }
+            }, false)
+        }
+
+        function getValue(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+        function addMsg(data) {
+            let el = '';
+            if (data.type == 'serverInformation') {
+                el = `<li class="tc"><div class="info">${decodeURIComponent(data.name)}进入房间</div></li>`;
+            } else if (data.type == 'chat') {
+                if (wechat.nickname != data.name)
+                    el = `<li class="tl"><div class="msg_box"><span class="name">${decodeURIComponent(data.name)}</span><span class="msg">${decodeURIComponent(data.message)}</span></div></li>`;
+                else
+                    el = `<li><div class="msg_box"><span class="msg">${decodeURIComponent(data.message)}</span></div></li>`;
+
+            }
+            document.querySelector("#msg_list").innerHTML += el;
+        }
+        function sendMsg() {
+            var input = document.querySelector('#val');
+            ws.send(JSON.stringify({ type: 'chat', ...wechat, message: input.value }));
+            input.value = '';
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeChat</title>
+    <link rel="stylesheet" href="../static/css/reset.css">
+    <script src="../static/js/flexible.js"></script>
+</head>
+<style>
+    h1 {
+        text-align: center;
+    }
+
+    .wechat_list {
+        width: 90%;
+        margin: 0 auto;
+    }
+
+    .room {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: .2rem;
+        border-radius: .04rem;
+        padding: .1rem .2rem;
+        border: .02rem solid #abcdef;
+    }
+
+    .createRoom {
+        width: 90%;
+        padding: .1rem;
+        margin: .2rem auto;
+        color: #fff;
+        border-radius: .04rem;
+        font-size: .28rem;
+        text-align: center;
+        background-color: #abcdef;
+        border: .02rem solid #66a3e0;
+    }
+</style>
+
+<body>
+    <h1>{{ title }}</h1>
+    <div>
+        <ul id="wechat_list" class="wechat_list">
+
+        </ul>
+        <div class="createRoom" onclick="createRoom();">+创建聊天室</div>
+    </div>
+    <script>
+        // const address = 'ws://42.194.194.50:3366';
+        const address = 'ws://localhost:3366';
+        if (window.WebSocket) {
+            var ws = new WebSocket(address);
+
+            ws.onopen = function (e) {
+                console.log("连接服务器成功");
+                ws.send(JSON.stringify({ type: 'hall' }));
+            }
+            ws.onclose = function (e) {
+                console.log("服务器关闭");
+            }
+            ws.onerror = function () {
+                console.log("连接出错");
+            }
+
+            ws.onmessage = function (e) {
+                let data = JSON.parse(e.data);
+                console.log(data);
+                let rooms = new Map();
+                if (data.list && data.list.length > 0) {
+                    for (let item of data.list) {
+                        if (rooms.has(item.room)) {
+                            rooms.get(item.room).push(item.name);
+                        } else {
+                            rooms.set(item.room, [item.name]);
+                        }
+                    }
+                }
+                showWechats(rooms);
+            }
+            ws.onclose = this.onWebsocketClose;
+            ws.onerror = this.onWebsocketError;
+        }
+        function showWechats(list) {
+            let el = '';
+            list.forEach((val, key) => {
+                el += `<li class='room'><span>${decodeURIComponent(key)}(${val.length})</span><span onclick='addRoom("${decodeURIComponent(key)}");'>进入></span></li>`;
+            });
+            document.querySelector('#wechat_list').innerHTML = el;
+        }
+        function addRoom(room) {
+            let name = prompt(`请输入昵称并加入${room}聊天室`);
+            if (name && name != '') {
+                location.href = encodeURI(`/wechat.html?user=${encodeURIComponent(name)}&room=${encodeURIComponent(room)}`);
+            }
+        }
+        function createRoom() {
+            let name = prompt(`请输入你的昵称`);
+            if (name && name != '') {
+                let room = prompt(`请输入聊天室名称`);
+                if (room && room != '') {
+                    location.href = encodeURI(`/wechat.html?user=${encodeURIComponent(name)}&room=${encodeURIComponent(room)}`);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
