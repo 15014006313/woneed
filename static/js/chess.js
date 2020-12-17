@@ -100,6 +100,7 @@ class Chess {
     }
     //绘画棋子
     drawChess(x, y, f) {
+        // this.context.globalCompositeOperation = "destination-over";
         this.context.beginPath();
         this.context.arc(x * this.cellSize, y * this.cellSize, this.chessmanSize, 0, 2 * Math.PI);
         this.context.closePath();
