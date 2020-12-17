@@ -20,14 +20,52 @@
 </head>
 
 <body>
-    
-    
-    <p style="text-align: center;">五子棋</p>
+
+
+    <p style="text-align: center;"><span id="name"></span>五子棋</p>
     <canvas id="chess"></canvas>
     <p id="tips" style="text-align: center;color: green;font-size: .4rem;"></p>
+    <script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.js"></script>
     <script src="../static/js/chess.js"></script>
     <script>
-        var chess = new Chess({ id: "#chess" });
+        var chess = new Chess({ id: "#chess" }), aaa = [];
+        const address = 'ws://localhost:7777';
+        var wechat = { id: md5(getValue('user')), nickname: getValue('user'), room: getValue('room') }, room = { name: document.querySelector("#name") };
+        if (wechat.nickname != null && wechat.nickname != "" && wechat.room != null && wechat.room != "" && window.WebSocket) {
+            var ws = new WebSocket(address);
+
+            ws.onopen = function (e) {
+                console.log("连接服务器成功");
+                ws.send(JSON.stringify({ type: 'join', ...wechat }));
+            }
+            ws.onclose = function (e) {
+                console.log("服务器关闭");
+            }
+            ws.onerror = function () {
+                console.log("连接出错");
+            }
+
+            ws.onmessage = function (e) {
+                const res = JSON.parse(e.data);
+                console.log(res);
+                if(res.current == wechat.id)
+                    chess.isMe = true;
+                if (res.chess)
+                    chess.reDrawBoard(res.chess['chessBoard']);
+                room.name.innerHTML = decodeURIComponent(res.room);
+            }
+            chess.dispatch = function(coor){
+                let res = { type: 'step', ...coor, ...wechat }
+                ws.send(JSON.stringify(res));
+            }
+            ws.onclose = this.onWebsocketClose;
+            ws.onerror = this.onWebsocketError;
+        }
+        function getValue(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
     </script>
 </body>
 
