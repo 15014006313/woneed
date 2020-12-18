@@ -1,7 +1,7 @@
 const { resolveNaptr } = require("mz/dns");
 const ws = require("nodejs-websocket");
-let chessGame = {}, connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' };
-let initChess = [
+//初始化棋盘数据
+let initChessBoard = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -13,26 +13,43 @@ let initChess = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ];
+//存储所有棋盘数据
+let chessGame = { '666': initChessBoard }, 
+//通讯连接类型枚举
+connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' };
+
+//创建服务
 var sever = ws.createServer(function (connect) {
     connect.on("text", function (str) {
+        //接收数据并转为JSON格式
         const data = JSON.parse(str);
         switch (data.type) {
             case 'join':
+                //加入房间
+
+                //判断房间是否初始化
                 if (chessGame[data.room] == undefined) {
-                    chessGame[data.room] = { alive: true, chessBoard: initChess, players: [], current: 0 };
+                    //初始化棋局，并存储
+                    chessGame[data.room] = { alive: true, chessBoard: initChessBoard, players: [], current: 0 };
                 }
-                if (chessGame[data.room].players.length < 2) {
+                //判断用户身份，选手or观战
+                if (chessGame[data.room].players.length < 2 && chessGame[data.room].players.indexOf(data.id) == -1) {
                     chessGame[data.room].players.push(data.id);
                 }
+
+                //配置连接信息
                 connect.info = {
                     type: connTypeEnum.userAddRoom,
                     id: data.id,
                     room: data.room,
                     nickname: data.nickname
                 };
+
+                //调用通讯方法
                 boardcast({
                     ...connect.info,
                     current: chessGame[data.room].players[chessGame[data.room].current],
+                    chess: chessGame[data.room],
                     message: data.nickname + "进入房间"
                 }, sever);
                 boardcast({
@@ -42,23 +59,29 @@ var sever = ws.createServer(function (connect) {
                 }, sever);
                 break;
             case 'step':
+                //落子
+
+                //配置连接类型
                 connect.type = connTypeEnum.gameStep;
+                //检测是否允许落子
                 let cs = checkStep(data);
+                //初始化通讯内容
+                let res = {
+                    ...connect.info,
+                    chess: chessGame[data.room]
+                }
                 switch (cs) {
                     case 0:
                         //棋局已结束
-                        console.log("棋局已结束");
+                        res.message = '棋局已结束';
                         break;
                     case 1:
                         //当前坐标易落子
-                        console.log("当前坐标易落子");
+                        res.message = '当前坐标已落子';
                         break;
                     case 2:
                         //成功
-                        let res = {
-                            ...connect.info,
-                            message: '新落子'
-                        }, i = checkBoard(data.room);
+                        let i = checkBoard(data.room);
                         if (i == 0) {
                             res.message = '新落子';
                             res.current = chessGame[data.room].players[chessGame[data.room].current];
@@ -69,18 +92,19 @@ var sever = ws.createServer(function (connect) {
                             res.message = '游戏结束';
                             res.winner = chessGame[data.room].players[1];
                         }
-                        boardcast(res, sever); break
+                        break
                     case 3:
                         //非选手无法操作
-                        console.log("非选手无法操作");
+                        res.message = '非选手无法操作';
                         break;
                     case 4:
                         //非当前选手执棋
-                        console.log("非当前选手执棋");
+                        res.message = '非当前选手执棋';
                         break;
                     default:
                         break;
                 }
+                boardcast(res, sever);
                 break;
             default:
                 break;
@@ -88,24 +112,25 @@ var sever = ws.createServer(function (connect) {
     });
     connect.on('close', () => {
         //离开房间
-        console.log(connect);
+        console.log(`${connect.info.nickname}离开${connect.info.room}房间`);
         boardcast(JSON.stringify({
             type: 'leave',
-            room: connect.room,
-            message: connect.nickname + '离开房间'
+            room: connect.info.room,
+            message: connect.info.nickname + '离开房间'
         }), sever);
 
         //从在线聊天的人数上面除去
         boardcast(JSON.stringify({
             type: connTypeEnum.chatterList,
-            room: connect.room,
-            list: getAllChatter(connect.room, sever)
+            room: connect.info.room,
+            list: getAllChatter(connect.info.room, sever)
         }), sever)
     });
     connect.on('error', function (code) {
         console.log('异常：', code);
     });
 }).listen(7777);
+//检测棋子合法性
 const checkStep = (data) => {
     if (!chessGame[data.room].alive) return 0;
     let players = chessGame[data.room].players,
@@ -123,6 +148,7 @@ const checkStep = (data) => {
     }
     return 3;
 }
+//检测棋局是否结束
 const checkBoard = (room) => {
     const grid = chessGame[room].chessBoard;
     for (var i = 0; i < grid.length; i++) {
@@ -178,37 +204,24 @@ const checkBoard = (room) => {
     }
     return 0;
 }
-const isPlayer = (sever) => {
-    let players = sever.connections.filter(item => item.type != "watch");
-    return players.length < 2;
-}
 const boardcast = (str, sever) => {
+    console.log(`-------消息体---start-------`);
     console.log(str);
+    console.log(`-------消息体----end--------`);
+    //遍历所有连接，给指定房间内的所有用户发生消息
     sever.connections.forEach((connect) => {
-        if (connect.info.type == 'wechatHall') {
-            connect.sendText(JSON.stringify({
-                type: 'chatterList',
-                list: getAllChatter('wechat_hall', sever)
-            }))
-        } else {
-            if (str.room == connect.info.room) {
-                let data = str.type == connTypeEnum.chatterList ? str : { ...str, chess: chessGame[str.room] }
-                connect.sendText(JSON.stringify(data));
-            }
+        if (str.room == connect.info.room) {
+            connect.sendText(JSON.stringify(str));
         }
     })
 };
+//获取当前房间的所有用户
 const getAllChatter = (room, sever) => {
     let chartterArr = [];
+    //遍历所有连接，获取房间内的所有用户
     sever.connections.forEach((connect) => {
-        if (room == 'wechat_hall') {
-            if (connect.info.type == connTypeEnum.userAddRoom) {
-                chartterArr.push({ name: connect.info.nickname, room: connect.info.room })
-            }
-        } else {
-            if (room == connect.info.room) {
-                chartterArr.push({ name: connect.info.nickname, room: connect.info.room })
-            }
+        if (room == connect.info.room) {
+            chartterArr.push({ name: connect.info.nickname, room: connect.info.room })
         }
     });
     return chartterArr;

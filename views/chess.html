@@ -48,13 +48,15 @@
             ws.onmessage = function (e) {
                 const res = JSON.parse(e.data);
                 console.log(res);
-                if(res.current == wechat.id)
+                if (res.current == wechat.id)
                     chess.isMe = true;
                 if (res.chess)
                     chess.reDrawBoard(res.chess['chessBoard']);
                 room.name.innerHTML = decodeURIComponent(res.room);
+                if (res.winner != undefined)
+                    document.querySelector("#tips").innerHTML = res.nickname;
             }
-            chess.dispatch = function(coor){
+            chess.dispatch = function (coor) {
                 let res = { type: 'step', ...coor, ...wechat }
                 ws.send(JSON.stringify(res));
             }

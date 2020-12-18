@@ -47,6 +47,11 @@ class Chess {
             this.context.lineTo(this.boardSize * this.cellSize, i * this.cellSize + this.cellSize);
             this.context.strokeStyle = "#dfdfdf";
             this.context.stroke();
+        }
+        this.intiChess();
+    }
+    intiChess(){
+        for (var i = 0; i < this.boardSize; i++) {
             for (var j = 0; j < this.boardSize; j++) {
                 if (this.grid[i][j] != 0) {
                     this.drawChess(j + 1, i + 1, this.grid[i][j] == 'A');
@@ -90,17 +95,17 @@ class Chess {
             console.log("当前位置已落子"); return;
         }
         //判断允许落子，绘画棋子
-        this.drawChess(x, y, f);
+        //this.drawChess(x, y, f);
+        this.isMe = false;
         if (typeof this.dispatch === 'function')
             this.dispatch({ x: y - 1, y: x - 1 });
-        this.isMe = false;
-        this.grid[y - 1][x - 1] = this.curPlayer ? "A" : "B";
+        //this.grid[y - 1][x - 1] = this.curPlayer ? "A" : "B";
         //this.curPlayer = !this.curPlayer;
         this.checkBoard();
     }
     //绘画棋子
     drawChess(x, y, f) {
-        // this.context.globalCompositeOperation = "destination-over";
+        console.log(123);
         this.context.beginPath();
         this.context.arc(x * this.cellSize, y * this.cellSize, this.chessmanSize, 0, 2 * Math.PI);
         this.context.closePath();
