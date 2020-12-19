@@ -50,6 +50,7 @@ class Chess {
         }
         this.intiChess();
     }
+    //初始化棋子
     intiChess(){
         for (var i = 0; i < this.boardSize; i++) {
             for (var j = 0; j < this.boardSize; j++) {
@@ -105,7 +106,6 @@ class Chess {
     }
     //绘画棋子
     drawChess(x, y, f) {
-        console.log(123);
         this.context.beginPath();
         this.context.arc(x * this.cellSize, y * this.cellSize, this.chessmanSize, 0, 2 * Math.PI);
         this.context.closePath();
@@ -175,9 +175,5 @@ class Chess {
             if (!this.isAlive) { break; }
         }
     }
-}
-function Room(id) {
-    this.id = id;
-    this.player = [];
 }
 

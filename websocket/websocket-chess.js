@@ -1,104 +1,94 @@
 const { resolveNaptr } = require("mz/dns");
 const ws = require("nodejs-websocket");
-//初始化棋盘数据
-let initChessBoard = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-];
-//存储所有棋盘数据
-let chessGame = { '666': initChessBoard }, 
+const ChessGame = require("../method/chess");
+
+let chessGame = new ChessGame();
 //通讯连接类型枚举
-connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' };
+const connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' }, userEnum = { WATCHER: 'watcher', PLAYER: 'player' };
 
 //创建服务
 var sever = ws.createServer(function (connect) {
     connect.on("text", function (str) {
         //接收数据并转为JSON格式
-        const data = JSON.parse(str);
+        const data = JSON.parse(str),
+            room = data.room,
+            user = { id: data.id, nickname: data.nickname };
+            let game = chessGame.get(room);
         switch (data.type) {
             case 'join':
-                //加入房间
-
-                //判断房间是否初始化
-                if (chessGame[data.room] == undefined) {
-                    //初始化棋局，并存储
-                    chessGame[data.room] = { alive: true, chessBoard: initChessBoard, players: [], current: 0 };
-                }
-                //判断用户身份，选手or观战
-                if (chessGame[data.room].players.length < 2 && chessGame[data.room].players.indexOf(data.id) == -1) {
-                    chessGame[data.room].players.push(data.id);
-                }
-
+                /**********加入房间**********/
                 //配置连接信息
                 connect.info = {
                     type: connTypeEnum.userAddRoom,
-                    id: data.id,
-                    room: data.room,
-                    nickname: data.nickname
+                    id: data.id,    //用户id
+                    room: data.room,    //房间号
+                    nickname: data.nickname,    //昵称
+                    status: userEnum.WATCHER    //身份标识
                 };
-
-                //调用通讯方法
-                boardcast({
-                    ...connect.info,
-                    current: chessGame[data.room].players[chessGame[data.room].current],
-                    chess: chessGame[data.room],
-                    message: data.nickname + "进入房间"
-                }, sever);
-                boardcast({
-                    room: data.room,
-                    type: connTypeEnum.chatterList,
-                    list: getAllChatter(data.room, sever)
-                }, sever);
+                //判断房间是否存在, 若不存在初始化棋局
+                if (!chessGame.has(room))
+                    chessGame.newGame(room);
+                //判断用户身份，选手or观战
+                if (chessGame.isLackUser(room)) {
+                    if (chessGame.gameAddUser(room, user))
+                        connect.info.status = userEnum.PLAYER;
+                }
+                if (game != undefined) {
+                    //调用通讯方法
+                    boardcast({
+                        ...connect.info,
+                        current: game.players[game.current],
+                        chess: game,
+                        message: data.nickname + "进入房间"
+                    }, sever);
+                    boardcast({
+                        room: room,
+                        type: connTypeEnum.chatterList,
+                        list: getAllChatter(room, sever)
+                    }, sever);
+                }
                 break;
             case 'step':
-                //落子
-
+                /**********落子**********/
                 //配置连接类型
                 connect.type = connTypeEnum.gameStep;
                 //检测是否允许落子
-                let cs = checkStep(data);
+                let cs = chessGame.addPiece(room, user, { x: data.x, y: data.y });
                 //初始化通讯内容
                 let res = {
                     ...connect.info,
-                    chess: chessGame[data.room]
+                    chess: game
                 }
                 switch (cs) {
                     case 0:
                         //棋局已结束
+                        res.code = '201'
                         res.message = '棋局已结束';
                         break;
                     case 1:
                         //当前坐标易落子
+                        res.code = '202'
                         res.message = '当前坐标已落子';
                         break;
                     case 2:
                         //成功
-                        let i = checkBoard(data.room);
-                        if (i == 0) {
+                        res.code = '200'
+                        let gameRes = chessGame.checkChessGame(room);
+                        if (gameRes == 0) {
                             res.message = '新落子';
-                            res.current = chessGame[data.room].players[chessGame[data.room].current];
-                        } else if (i == 'A') {
+                        } else{
                             res.message = '游戏结束';
-                            res.winner = chessGame[data.room].players[0];
-                        } else if (i == 'B') {
-                            res.message = '游戏结束';
-                            res.winner = chessGame[data.room].players[1];
+                            res.winner = game.players.find(item => item.code == gameRes);
                         }
                         break
                     case 3:
                         //非选手无法操作
+                        res.code = '203'
                         res.message = '非选手无法操作';
                         break;
                     case 4:
                         //非当前选手执棋
+                        res.code = '204'
                         res.message = '非当前选手执棋';
                         break;
                     default:
@@ -111,6 +101,7 @@ var sever = ws.createServer(function (connect) {
         }
     });
     connect.on('close', () => {
+        /**********断开连接**********/
         //离开房间
         console.log(`${connect.info.nickname}离开${connect.info.room}房间`);
         boardcast(JSON.stringify({

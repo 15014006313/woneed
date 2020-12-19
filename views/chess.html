@@ -48,10 +48,11 @@
             ws.onmessage = function (e) {
                 const res = JSON.parse(e.data);
                 console.log(res);
-                if (res.current == wechat.id)
-                    chess.isMe = true;
-                if (res.chess)
+                if (res.chess) {
+                    chess.isMe = res.chess.players[res.chess.current].id == wechat.id;
+                    chess.isAlive = res.chess.alive;
                     chess.reDrawBoard(res.chess['chessBoard']);
+                }
                 room.name.innerHTML = decodeURIComponent(res.room);
                 if (res.winner != undefined)
                     document.querySelector("#tips").innerHTML = res.nickname;
