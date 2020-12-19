@@ -29,7 +29,8 @@
     <script src="../static/js/chess.js"></script>
     <script>
         var chess = new Chess({ id: "#chess" }), aaa = [];
-        const address = 'ws://localhost:7777';
+        // const address = 'ws://localhost:7777';
+        const address = 'ws://42.194.194.50:7777';
         var wechat = { id: md5(getValue('user')), nickname: getValue('user'), room: getValue('room') }, room = { name: document.querySelector("#name") };
         if (wechat.nickname != null && wechat.nickname != "" && wechat.room != null && wechat.room != "" && window.WebSocket) {
             var ws = new WebSocket(address);
@@ -49,7 +50,7 @@
                 const res = JSON.parse(e.data);
                 console.log(res);
                 if (res.chess) {
-                    chess.isMe = res.chess.players[res.chess.current].id == wechat.id;
+                    chess.isMe = (res.chess.current > -1) && (res.chess.players[res.chess.current].id == wechat.id);
                     chess.isAlive = res.chess.alive;
                     chess.reDrawBoard(res.chess['chessBoard']);
                 }

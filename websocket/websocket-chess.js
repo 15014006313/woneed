@@ -37,7 +37,6 @@ var sever = ws.createServer(function (connect) {
                     //调用通讯方法
                     boardcast({
                         ...connect.info,
-                        current: game.players[game.current],
                         chess: game,
                         message: data.nickname + "进入房间"
                     }, sever);
