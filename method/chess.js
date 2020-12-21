@@ -1,6 +1,46 @@
 class ChessGame {
     constructor() {
         this.games = {};
+        this.roomList = ['000', '111', '222', '333', '444', '555', '666', '777', '888', '999'];
+        this.initRoom();
+    }
+    getRoomListData(){
+        return Object.keys(this.games).map((item, key) => { return { room: key, player: item.players, alive: item.alive } });
+    }
+    //用户状态，等待/已准备
+    static playerEnum = { WAITING: 'waiting', READY: 'ready' }
+    initRoom() {
+        for (let room of this.roomList) {
+            this.games[room] = new GameRoom();
+        }
+    }
+    //重置游戏
+    ResetGame(room) {
+        let game = this.games[room];
+        if (game == undefined) return;
+        game.chessBoard = new ChessGame();
+        game.alive = false;
+        game.players[0].status = players.WAITING;
+        game.players[1].status = players.WAITING;
+    }
+    //用户准备
+    playerReady(room, userid){
+        let game = this.games[room];
+        if (game == undefined) return;
+        for (let player of game.players) {
+            if(player.id == userid)
+                player.status = playerEnum.READY;
+        }
+        this.checkBegan(room);
+    }
+    //判断是否开始
+    checkBegan(room){
+        let game = this.games[room];
+        if (game == undefined) return;
+        if (game.players.length == 2 && game.players.every(item => item.status == playerEnum.READY )) {
+            game.alive = true;
+            game.current = 0;
+        }
     }
     //根据房间号判断房间是否存在
     has(room) {
@@ -97,10 +137,7 @@ class ChessGame {
         if (game.players.length < 2) {
             if (!game.players.some(item => item.id == user.id))
                 game.players.push({ ...user, 'code': game.players.length == 0 ? 'A' : 'B' });
-            if(game.players.length == 2) {
-                game.alive = true;
-                game.current = 0;
-            }
+            this.checkBegan(room);
             return true;
         }
         return false;
@@ -113,14 +150,14 @@ class ChessGame {
     }
 }
 //房间对象
-class GameRoom{
-    constructor(){
+class GameRoom {
+    constructor() {
         return { 'alive': false, 'chessBoard': new ChessBoard(), 'current': -1, 'players': [] };
     }
 }
 //棋盘对象
-class ChessBoard{
-    constructor(){
+class ChessBoard {
+    constructor() {
         return [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

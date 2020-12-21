@@ -4,7 +4,8 @@ const ChessGame = require("../method/chess");
 
 let chessGame = new ChessGame();
 //通讯连接类型枚举
-const connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' }, userEnum = { WATCHER: 'watcher', PLAYER: 'player' };
+const connTypeEnum = { userAddRoom: 'userAddRoom', serverInformation: 'serverInformation', chatterList: 'chatterList', gameStep: 'gameStep' },
+    userEnum = { WATCHER: 'watcher', PLAYER: 'player' };
 
 //创建服务
 var sever = ws.createServer(function (connect) {
@@ -13,7 +14,7 @@ var sever = ws.createServer(function (connect) {
         const data = JSON.parse(str),
             room = data.room,
             user = { id: data.id, nickname: data.nickname };
-            let game = chessGame.get(room);
+        let game = chessGame.get(room);
         switch (data.type) {
             case 'join':
                 /**********加入房间**********/
@@ -75,7 +76,7 @@ var sever = ws.createServer(function (connect) {
                         let gameRes = chessGame.checkChessGame(room);
                         if (gameRes == 0) {
                             res.message = '新落子';
-                        } else{
+                        } else {
                             res.message = '游戏结束';
                             res.winner = game.players.find(item => item.code == gameRes);
                         }

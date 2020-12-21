@@ -17,7 +17,12 @@ var view_wechat = async (ctx, next) => {
     });
 };
 var view_chess = async (ctx, next) => {
-    ctx.render('chess.html', {
+    ctx.render('game/chess.html', {
+        title: ''
+    });
+};
+var view_room = async (ctx, next) => {
+    ctx.render('game/room.html', {
         title: ''
     });
 };
@@ -43,6 +48,7 @@ var api_hello = async (ctx, next) => {
 module.exports = {
     'GET /': view_index,
     'GET /chess.html': view_chess,
+    'GET /room.html': view_room,
     'GET /wechat.html': view_wechat,
     'GET /wechat_hall.html': view_wechat_hall,
     'POST /signin': api_signin,
