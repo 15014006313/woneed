@@ -9,9 +9,60 @@
     <title>demo</title>
     <script src="http://static.jonvie.com/jonvie/wx/debug/V5.0/js/flexible.js"></script>
 </head>
+
 <body>
     <p style="text-align: center;">房间</p>
-    <canvas id="chess"></canvas>
+    <div>
+        <ul id="rooms">
+            <li>
+                <div>
+                    <div></div>
+                    <p></p>
+                </div>
+            </li>
+        </ul>
+    </div>
     <p id="tips" style="text-align: center;color: green;font-size: .4rem;"></p>
+    <script>
+        const address = 'ws://localhost:7777';
+        if (window.WebSocket) {
+            var ws = new WebSocket(address);
+            ws.onopen = function (e) {
+                console.log("连接服务器成功");
+                ws.send(JSON.stringify({ type: 'hall' }));
+            }
+            ws.onclose = function (e) {
+                console.log("服务器关闭");
+            }
+            ws.onerror = function () {
+                console.log("连接出错");
+            }
+
+            ws.onmessage = function (e) {
+                let res = JSON.parse(e.data);
+                console.log(res);
+                if (res.type == 'hall')
+                    showRooms(res.rooms);
+            }
+        }
+        function showRooms(rooms) {
+            let el = '';
+            for (let item of rooms) {
+                el += `<li onclick="addRoom('${item.room}');">
+                          <div>
+                              <div class='${item.alive ? "alive" : ""}'></div>
+                              <p>${item.room}（${item.players.length}）</p>
+                          </div>
+                      </li>`;
+            }
+            document.querySelector('#rooms').innerHTML = el;
+        }
+        function addRoom(room) {
+            let name = prompt(`请输入昵称并加入${room}房间`);
+            if (name)
+                window.open(`/chess.html?user=${encodeURIComponent(name)}&room=${encodeURIComponent(room)}`);
+        }
+    </script>
 </body>
+
 </html>

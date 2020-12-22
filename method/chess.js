@@ -1,14 +1,15 @@
 class ChessGame {
     constructor() {
         this.games = {};
+        //用户状态，等待/已准备
+        this.playerEnum = { WAITING: 'waiting', READY: 'ready' }
         this.roomList = ['000', '111', '222', '333', '444', '555', '666', '777', '888', '999'];
         this.initRoom();
     }
+    //获取所有房间信息
     getRoomListData(){
-        return Object.keys(this.games).map((item, key) => { return { room: key, player: item.players, alive: item.alive } });
+        return Object.keys(this.games).map(item => { return { room: item, players: this.games[item].players, alive: this.games[item].alive } });
     }
-    //用户状态，等待/已准备
-    static playerEnum = { WAITING: 'waiting', READY: 'ready' }
     initRoom() {
         for (let room of this.roomList) {
             this.games[room] = new GameRoom();
@@ -18,7 +19,7 @@ class ChessGame {
     ResetGame(room) {
         let game = this.games[room];
         if (game == undefined) return;
-        game.chessBoard = new ChessGame();
+        game.chessBoard = new ChessBoard();
         game.alive = false;
         game.players[0].status = players.WAITING;
         game.players[1].status = players.WAITING;
@@ -26,21 +27,23 @@ class ChessGame {
     //用户准备
     playerReady(room, userid){
         let game = this.games[room];
-        if (game == undefined) return;
+        if (game == undefined) return false;
         for (let player of game.players) {
             if(player.id == userid)
-                player.status = playerEnum.READY;
+                player.status = this.playerEnum.READY;
         }
-        this.checkBegan(room);
+        return this.checkBegan(room);
     }
     //判断是否开始
     checkBegan(room){
         let game = this.games[room];
-        if (game == undefined) return;
-        if (game.players.length == 2 && game.players.every(item => item.status == playerEnum.READY )) {
+        if (game == undefined) return false;
+        if (game.players.length == 2 && game.players.every(item => item.status == this.playerEnum.READY )) {
             game.alive = true;
             game.current = 0;
+            return true;
         }
+        return false
     }
     //根据房间号判断房间是否存在
     has(room) {

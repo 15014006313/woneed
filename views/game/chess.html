@@ -25,6 +25,7 @@
     <p style="text-align: center;"><span id="name"></span>五子棋</p>
     <canvas id="chess"></canvas>
     <p id="tips" style="text-align: center;color: green;font-size: .4rem;"></p>
+    <button class="" onclick="ready();">准备</button>
     <script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.js"></script>
     <script src="../static/js/chess.js"></script>
     <script>
@@ -37,7 +38,7 @@
 
             ws.onopen = function (e) {
                 console.log("连接服务器成功");
-                ws.send(JSON.stringify({ type: 'join', ...wechat }));
+                ws.send(JSON.stringify({ type: 'userAdd', ...wechat }));
             }
             ws.onclose = function (e) {
                 console.log("服务器关闭");
@@ -69,6 +70,9 @@
             var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
             var r = window.location.search.substr(1).match(reg);
             if (r != null) return unescape(r[2]); return null;
+        }
+        function ready(){
+            wx.send({ type: 'ready', ...wechat });
         }
     </script>
 </body>
