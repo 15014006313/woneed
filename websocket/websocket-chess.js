@@ -9,7 +9,8 @@ const connEnum = {
     USERADD: 'userAdd',     //用户进入房间
     ROOMLIST: 'roomList',   //房间列表
     STEP: 'gameStep',       //用户落子
-    READY: 'ready'          //用户准备
+    READY: 'ready',         //用户准备
+    LEAVE: 'leave'          //离开房间
 }, userEnum = { WATCHER: 'watcher', PLAYER: 'player' };
 
 //创建服务
@@ -50,15 +51,11 @@ var sever = ws.createServer(function (connect) {
                 boardcast({
                     ...connect.info,
                     chess: game,
-                    message: data.nickname + "进入房间"
-                }, sever);
-                boardcast({
-                    room: room,
-                    type: connEnum.ROOMLIST,
+                    message: data.nickname + "进入房间",
                     list: getUserList(room, sever)
                 }, sever);
                 break;
-            case 'step':
+            case connEnum.STEP:
                 /**********落子**********/
                 //配置连接类型
                 connect.type = connEnum.STEP;
@@ -106,7 +103,7 @@ var sever = ws.createServer(function (connect) {
                 }
                 boardcast(res, sever);
                 break;
-            case 'ready':
+            case connEnum.READY:
                 if (chessGame.playerReady(room, user.id)) {
                     boardcast({
                         type: connEnum.READY,
@@ -123,20 +120,13 @@ var sever = ws.createServer(function (connect) {
     connect.on('close', (conn) => {
         /**********断开连接**********/
         //离开房间
-        console.log(`离开房间`);
-        console.log(conn);
         boardcast(JSON.stringify({
-            type: 'leave',
-            room: 123,
-            message: '离开房间'
+            type: connEnum.LEAVE,
+            id: connect.info.id,
+            room: connect.info.room,
+            message: `${connect.info.nickname}离开房间`,
+            list: getUserList(connect.info.room, sever)
         }), sever);
-
-        //从在线聊天的人数上面除去
-        boardcast(JSON.stringify({
-            type: connEnum.ROOMLIST,
-            room: 123,
-            list: []
-        }), sever)
     });
     connect.on('error', function (code) {
         console.log('异常：', code);
@@ -145,6 +135,7 @@ var sever = ws.createServer(function (connect) {
 const boardcast = (str, sever) => {
     console.log(`-------消息体---start-------`);
     console.log(str);
+    console.log(`当前有${sever.connections.length}个连接`);
     console.log(`-------消息体----end--------`);
     //遍历所有连接，给指定房间内的所有用户发生消息
     sever.connections.forEach((connect) => {
@@ -152,10 +143,13 @@ const boardcast = (str, sever) => {
             if (connect.info.type == connEnum.HALL) {
                 connect.sendText(JSON.stringify({ type: connEnum.HALL, rooms: chessGame.getRoomListData() }));
             }
-        } else {
-            if((str.type == connEnum.USERADD && connect.info.type == connEnum.HALL)){
+        } else if (str.type == connEnum.USERADD) {
+            if (connect.info.type == connEnum.HALL)
                 connect.sendText(JSON.stringify({ type: connEnum.HALL, rooms: chessGame.getRoomListData() }));
+            if (str.room == connect.info.room) {
+                connect.sendText(JSON.stringify(str));
             }
+        } else {
             if (str.room == connect.info.room) {
                 connect.sendText(JSON.stringify(str));
             }

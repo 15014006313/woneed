@@ -2,12 +2,12 @@ class ChessGame {
     constructor() {
         this.games = {};
         //用户状态，等待/已准备
-        this.playerEnum = { WAITING: 'waiting', READY: 'ready' }
+        this.playerEnum = { WAITING: 'waiting', READY: 'ready', GAMEING: 'gameing' }
         this.roomList = ['000', '111', '222', '333', '444', '555', '666', '777', '888', '999'];
         this.initRoom();
     }
     //获取所有房间信息
-    getRoomListData(){
+    getRoomListData() {
         return Object.keys(this.games).map(item => { return { room: item, players: this.games[item].players, alive: this.games[item].alive } });
     }
     initRoom() {
@@ -25,22 +25,40 @@ class ChessGame {
         game.players[1].status = players.WAITING;
     }
     //用户准备
-    playerReady(room, userid){
+    playerReady(room, userid) {
         let game = this.games[room];
         if (game == undefined) return false;
         for (let player of game.players) {
-            if(player.id == userid)
+            if (player.id == userid) {
                 player.status = this.playerEnum.READY;
+                this.checkBegan(room);
+                return true;
+            }
+        }
+    }
+    //用户取消准备
+    playerCancelReady(room, userid) {
+        let game = this.games[room];
+        if (game == undefined) return false;
+        if (game.alive) return false;
+        for (let player of game.players) {
+            if (player.id == userid) {
+                player.status = this.playerEnum.WAITING;
+                return true;
+            }
         }
         return this.checkBegan(room);
     }
     //判断是否开始
-    checkBegan(room){
+    checkBegan(room) {
         let game = this.games[room];
         if (game == undefined) return false;
-        if (game.players.length == 2 && game.players.every(item => item.status == this.playerEnum.READY )) {
+        if (game.players.length == 2 && game.players.every(item => item.status == this.playerEnum.READY)) {
             game.alive = true;
             game.current = 0;
+            game.player[0].status = this.playerEnum.GAMEING;
+            game.player[1].status = this.playerEnum.GAMEING;
+            game.chessBoard = new ChessBoard();
             return true;
         }
         return false
@@ -123,6 +141,8 @@ class ChessGame {
                 if (rowflag == 5 || colflag == 5 || skewflag == 5 || skewflag2 == 5) {
                     //胜负已分，修改棋局状态
                     game.alive = false;
+                    game.players[0].status = this.playerEnum.WAITING;
+                    game.players[1].status = this.playerEnum.WAITING;
                     return grid[row][col];
                 }
             }
@@ -139,7 +159,7 @@ class ChessGame {
         let game = this.games[room];
         if (game.players.length < 2) {
             if (!game.players.some(item => item.id == user.id))
-                game.players.push({ ...user, 'code': game.players.length == 0 ? 'A' : 'B' });
+                game.players.push({ ...user, 'code': game.players.length == 0 ? 'A' : 'B', 'status': this.playerEnum.WAITING });
             this.checkBegan(room);
             return true;
         }

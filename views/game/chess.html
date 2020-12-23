@@ -29,12 +29,12 @@
     <script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.js"></script>
     <script src="../static/js/chess.js"></script>
     <script>
-        var chess = new Chess({ id: "#chess" }), aaa = [];
+        var chess = new Chess({ id: "#chess" }), aaa = [], ws;
         const address = 'ws://localhost:7777';
         // const address = 'ws://42.194.194.50:7777';
         var wechat = { id: md5(getValue('user')), nickname: getValue('user'), room: getValue('room') }, room = { name: document.querySelector("#name") };
         if (wechat.nickname != null && wechat.nickname != "" && wechat.room != null && wechat.room != "" && window.WebSocket) {
-            var ws = new WebSocket(address);
+            ws = new WebSocket(address);
 
             ws.onopen = function (e) {
                 console.log("连接服务器成功");
@@ -60,7 +60,7 @@
                     document.querySelector("#tips").innerHTML = res.nickname;
             }
             chess.dispatch = function (coor) {
-                let res = { type: 'step', ...coor, ...wechat }
+                let res = { type: 'gameStep', ...coor, ...wechat }
                 ws.send(JSON.stringify(res));
             }
             ws.onclose = this.onWebsocketClose;
@@ -72,7 +72,8 @@
             if (r != null) return unescape(r[2]); return null;
         }
         function ready(){
-            wx.send({ type: 'ready', ...wechat });
+            console.log(JSON.stringify({ type: 'ready', ...wechat }));
+            ws.send(JSON.stringify({ type: 'ready', ...wechat }));
         }
     </script>
 </body>
